@@ -1,13 +1,19 @@
-use std::cmp::Ordering;
+use std::cmp::{Ordering, PartialOrd};
 
-pub struct BinarySearchTree {
-    value: Option<i32>,
-    left: Option<Box<BinarySearchTree>>,
-    right: Option<Box<BinarySearchTree>>,
+pub struct BinarySearchTree<T>
+where
+    T: PartialOrd,
+{
+    value: Option<T>,
+    left: Option<Box<BinarySearchTree<T>>>,
+    right: Option<Box<BinarySearchTree<T>>>,
 }
 
-impl BinarySearchTree {
-    pub fn new() -> BinarySearchTree {
+impl<T> BinarySearchTree<T>
+where
+    T: PartialOrd,
+{
+    pub fn new() -> BinarySearchTree<T> {
         BinarySearchTree {
             value: None,
             left: None,
@@ -15,7 +21,7 @@ impl BinarySearchTree {
         }
     }
 
-    pub fn insert(&mut self, value: i32) {
+    pub fn insert(&mut self, value: T) {
         match &self.value {
             None => self.value = Some(value),
             Some(key) => {
@@ -39,22 +45,22 @@ impl BinarySearchTree {
         }
     }
 
-    pub fn minimum(&self) -> Option<i32> {
+    pub fn minimum(&self) -> Option<&T> {
         match &self.left {
             Some(node) => node.minimum(),
-            None => self.value,
+            None => self.value.as_ref(),
         }
     }
-    pub fn maximum(&self) -> Option<i32> {
+    pub fn maximum(&self) -> Option<&T> {
         match &self.right {
             Some(node) => node.maximum(),
-            None => self.value,
+            None => self.value.as_ref(),
         }
     }
 
-    pub fn search(&self, value: i32) -> bool {
+    pub fn search(&self, value: T) -> bool {
         match &self.value {
-            Some(key) => match key.cmp(&value) {
+            Some(key) => match key.partial_cmp(&value).unwrap() {
                 Ordering::Equal => true,
                 Ordering::Less => match &self.right {
                     Some(node) => node.search(value),
@@ -78,14 +84,14 @@ mod tests {
     fn test_i32() {
         let mut tree = BinarySearchTree::new();
         tree.insert(0);
-        assert_eq!(tree.minimum().unwrap(), 0);
-        assert_eq!(tree.maximum().unwrap(), 0);
+        assert_eq!(*tree.minimum().unwrap(), 0);
+        assert_eq!(*tree.maximum().unwrap(), 0);
         tree.insert(10);
-        assert_eq!(tree.minimum().unwrap(), 0);
-        assert_eq!(tree.maximum().unwrap(), 10);
+        assert_eq!(*tree.minimum().unwrap(), 0);
+        assert_eq!(*tree.maximum().unwrap(), 10);
         tree.insert(-15);
-        assert_eq!(tree.minimum().unwrap(), -15);
-        assert_eq!(tree.maximum().unwrap(), 10);
+        assert_eq!(*tree.minimum().unwrap(), -15);
+        assert_eq!(*tree.maximum().unwrap(), 10);
     }
 
     #[test]
@@ -101,8 +107,55 @@ mod tests {
         assert!(tree.search(60));
         assert!(!tree.search(62));
     }
+
+    #[test]
+    fn test_f64() {
+        let mut tree = BinarySearchTree::new();
+        tree.insert(0.);
+        assert_eq!(*tree.minimum().unwrap(), 0.);
+        assert_eq!(*tree.maximum().unwrap(), 0.);
+        tree.insert(10.1);
+        assert_eq!(*tree.minimum().unwrap(), 0.);
+        assert_eq!(*tree.maximum().unwrap(), 10.1);
+        tree.insert(-15.1);
+        assert_eq!(*tree.minimum().unwrap(), -15.1);
+        assert_eq!(*tree.maximum().unwrap(), 10.1);
+    }
+
+    #[test]
+    fn search_f64() {
+        let mut tree = BinarySearchTree::new();
+        tree.insert(50.1);
+        tree.insert(10.1);
+        tree.insert(60.1);
+        tree.insert(-150.1);
+        tree.insert(77.1);
+        tree.insert(-201.1);
+
+        assert!(tree.search(60.1));
+        assert!(!tree.search(62.1));
+    }
+
+    #[test]
+    fn test_str() {
+        let mut tree = BinarySearchTree::new();
+        tree.insert("hello world");
+        tree.insert("test string");
+        tree.insert("rust is good");
+        tree.insert("c++ is not bad");
+        tree.insert("java is not my type");
+        tree.insert("lololol");
+        tree.insert("great!");
+
+        assert!(tree.search("rust is good"));
+        assert!(!tree.search("rust is bad"));
+
+        assert_eq!(&"c++ is not bad", tree.minimum().unwrap());
+        assert_eq!(&"test string", tree.maximum().unwrap());
+    }
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // ERROR 1
 /*
 
@@ -135,6 +188,7 @@ Wrapping the field in a Box solves this problem. Box is a smart pointer type tha
 
 */
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // ERROR 2
 /*
 error[E0507]: cannot move out of `self.left` as enum variant `Some` which is behind a shared reference
@@ -152,4 +206,129 @@ help: consider borrowing here
    |
 41 |         match &self.left {
    |               +
+*/
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// ERROR 3
+// When use generic type
+
+/*
+error[E0369]: binary operation `<` cannot be applied to type `T`
+  --> src/data_structures/binary_search_tree.rs:22:44
+   |
+22 |                 let target_node = if value < *key {
+   |                                      ----- ^ ---- T
+   |                                      |
+   |                                      T
+   |
+help: consider restricting type parameter `T`
+   |
+9  | impl<T: std::cmp::PartialOrd> BinarySearchTree<T> {
+
+SOLUTION
+
+where
+    T: Ord
+*/
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// ERROR 4
+// When use generic type
+
+/*
+error[E0507]: cannot move out of `self.value` which is behind a shared reference
+  --> src/data_structures/binary_search_tree.rs:51:21
+   |
+51 |             None => self.value,
+   |                     ^^^^^^^^^^ move occurs because `self.value` has type `Option<T>`, which does not implement the `Copy` trait
+
+SOLUTION
+change return type
+Option<T> -> Option<&T>
+
+self.value -> self.value.as_ref()
+*/
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// ERROR 5
+/*
+error[E0277]: can't compare `&{integer}` with `{integer}`
+  --> src/data_structures/binary_search_tree.rs:94:9
+   |
+94 |         assert_eq!(tree.maximum().unwrap(), 10);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `&{integer} == {integer}`
+   |
+   = help: the trait `PartialEq<{integer}>` is not implemented for `&{integer}`
+   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider dereferencing here
+  --> /Users/youngseok/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/macros/mod.rs:40:22
+   |
+40 |                 if !(**left_val == *right_val) {
+   |                      +
+
+SOLUTION
+add dereference mark
+*/
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// ERROR 6
+// When test f64
+/*
+error[E0277]: the trait bound `{float}: Ord` is not satisfied
+   --> src/data_structures/binary_search_tree.rs:100:14
+    |
+100 |         tree.insert(0.);
+    |              ^^^^^^ the trait `Ord` is not implemented for `{float}`
+    |
+    = help: the following other types implement trait `Ord`:
+              isize
+              i8
+              i16
+              i32
+              i64
+              i128
+              usize
+              u8
+            and 4 others
+note: required by a bound in `binary_search_tree::BinarySearchTree::<T>::insert`
+   --> src/data_structures/binary_search_tree.rs:14:8
+    |
+14  |     T: Ord,
+    |        ^^^ required by this bound in `BinarySearchTree::<T>::insert`
+...
+24  |     pub fn insert(&mut self, value: T) {
+    |            ------ required by a bound in this associated function
+
+SOLUTION
+Ord to PatialOrd
+*/
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// ERROR 6
+// When test f64
+
+/*
+error[E0599]: the method `cmp` exists for reference `&T`, but its trait bounds were not satisfied
+  --> src/data_structures/binary_search_tree.rs:63:36
+   |
+63 |             Some(key) => match key.cmp(&value) {
+   |                                    ^^^ method cannot be called on `&T` due to unsatisfied trait bounds
+   |
+   = note: the following trait bounds were not satisfied:
+           `T: Ord`
+           which is required by `&T: Ord`
+           `&T: Iterator`
+           which is required by `&mut &T: Iterator`
+           `T: Iterator`
+           which is required by `&mut T: Iterator`
+   = help: items from traits can only be used if the type parameter is bounded by the trait
+help: the following traits define an item `cmp`, perhaps you need to restrict type parameter `T` with one of them:
+   |
+14 |     T: PartialOrd + Ord,
+   |                   +++++
+14 |     T: PartialOrd + Iterator,
+   |                   ++++++++++
+
+SOLUTION
+cmp to partial_cmp
 */
