@@ -1,12 +1,13 @@
 pub fn bubble_sort(arr: &mut Vec<i32>) {
-    let len = arr.len();
-
     let mut max = arr.len();
+    let mut sorted = false;
 
-    while max > 0 {
+    while !sorted {
+        sorted = true;
         for i in 1..max {
             if arr[i - 1] > arr[i] {
                 arr.swap(i - 1, i);
+                sorted = false;
             }
         }
 
