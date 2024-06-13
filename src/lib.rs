@@ -1,3 +1,4 @@
+pub mod data_structures;
 pub mod math;
 
 pub fn add(left: usize, right: usize) -> usize {
