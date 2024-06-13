@@ -1,5 +1,6 @@
 pub mod data_structures;
 pub mod math;
+pub mod sorting;
 
 pub fn add(left: usize, right: usize) -> usize {
     left + right
